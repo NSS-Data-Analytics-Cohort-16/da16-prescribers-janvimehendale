@@ -13,6 +13,15 @@ GROUP BY p1.npi
 ORDER BY total_claim DESC
 LIMIT 1;
 
+--OR
+
+SELECT
+	npi,
+	SUM(total_claim_count) 
+FROM prescription
+GROUP BY npi 
+ORDER BY SUM(total_claim_count) DESC
+LIMIT 5;
 -----------------------------------------------------------------------------------------------------------
 -- b. Repeat the above, but this time report the nppes_provider_first_name,
 --nppes_provider_last_org_name, specialty_description, and the total number of claims.
@@ -116,10 +125,24 @@ LIMIT 1;
 --Hint: You may want to use a CASE expression for this. 
 --See https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-case/
 
+SELECT 
+	drug_name,
+	CASE WHEN opioid_drug_flag = 'Y' THEN 'opioid'
+		  WHEN antibiotic_drug_flag = 'Y' THEN 'antibiotic'
+		  ELSE 'neither'
+		  END AS drug_type
+FROM drug;
 -----------------------------------------------------------------------------------------------------------
--- b. Building off of the query you wrote for part a, determine whether more was spent (total_drug_cost) 
---on opioids or on antibiotics. Hint: Format the total costs as MONEY for easier comparision.
-
+-- b. Building off of the query you wrote for part a, determine whether more was spent
+--(total_drug_cost) on opioids or on antibiotics. 
+--Hint: Format the total costs as MONEY for easier comparision.
+SELECT 
+	drug_name,
+	CASE WHEN opioid_drug_flag = 'Y' THEN 'opioid'
+		  WHEN antibiotic_drug_flag = 'Y' THEN 'antibiotic'
+		  ELSE 'neither'
+		  END AS drug_type
+FROM drug;
 -----------------------------------------------------------------------------------------------------------
 -- 5.	a. How many CBSAs are in Tennessee? Warning: The cbsa table contains information for all states, 
 --not just Tennessee.
