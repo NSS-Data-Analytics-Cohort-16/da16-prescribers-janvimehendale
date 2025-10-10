@@ -162,31 +162,33 @@ WHERE cbsaname ILIKE '%TN';
 --"Abilene, TX"	"10180"	"smallest_population"
 
 SELECT
-	cbsaname,
-	cbsa,
+	c.cbsaname,
+	c.cbsa,
+	p.population
 	CASE 
-		WHEN cbsa = (SELECT MAX(cbsa) FROM cbsa) THEN 'largest_population'
-		WHEN cbsa = (SELECT MIN(cbsa) FROM cbsa) THEN 'smallest_population'
-		END AS population
-FROM cbsa
-GROUP BY cbsa, cbsaname, population
-ORDER BY population
+		WHEN c.cbsa = (SELECT MAX(cbsa) FROM c.cbsa) THEN 'largest_population'
+		WHEN c.cbsa = (SELECT MIN(cbsa) FROM c.cbsa) THEN 'smallest_population'
+		END AS combined_population
+FROM cbsa c
+LEFT JOIN population p
+USING (fipscounty)
+GROUP BY c.cbsaname, c.cbsa
+ORDER BY p.population
 LIMIT 2;
 
 -----------------------------------------------------------------------------------------------------------
 -- c. What is the largest (in terms of population) county which is not included in a CBSA? 
---Report the county name and population.
+--Report the county name and population. Answer - "SHELBY"	937847
 
-SELECT
-	*,
-	CASE 
-		WHEN cbsa = (SELECT MAX(cbsa) FROM cbsa) THEN 'largest_population'
-		WHEN cbsa = (SELECT MIN(cbsa) FROM cbsa) THEN 'smallest_population'
-		END AS population
-FROM cbsa
-GROUP BY cbsa, cbsaname, population, fipscounty
-ORDER BY population
-LIMIT 2;
+SELECT 
+	f.county,
+	SUM(p.population)	
+FROM population p
+LEFT JOIN fips_county f
+USING(fipscounty)
+GROUP BY f.county, p.population
+ORDER BY p.population DESC;
+
 
 -----------------------------------------------------------------------------------------------------------
 -- 6.	a. Find all rows in the prescription table where total_claims is at least 3000.
