@@ -86,21 +86,25 @@ SELECT
 FROM prescriber p
 LEFT JOIN prescription p1
 USING (npi)
-WHERE p1.npi IS NULL
-GROUP BY p1.drug_name, p.specialty_description;
+WHERE p1.drug_name IS NULL
+--WHERE p1.npi IS NULL
+GROUP BY p1.drug_name, p.specialty_description
+ORDER BY specialty_count;
 -----------------------------------------------------------------------------------------------------------
 -- d. Difficult Bonus: Do not attempt until you have solved all other problems! 
 --For each specialty, report the percentage of total claims by that specialty which
 --are for opioids. Which specialties have a high percentage of opioids?
 SELECT
 	p.specialty_description AS specialty,
-	(SELECT (total_claim_count FROM prerscription WHERE d.opioid_drug_flag = 'Y' *100/  ),2) AS percentage
-	FROM prescriber p
+	SUM(CASE WHEN d.opioid_drug_flag = 'Y' THEN p1.total_claim_count
+	END) AS opioid_claim_count,
+	opioid_claim_count * 100/ SUM(p1.total_claim_count) AS percentage
+FROM prescriber p
 LEFT JOIN prescription p1
 USING (npi)
 LEFT JOIN drug d
 ON d.drug_name = p1.drug_name
-WHERE d.opioid_drug_flag = 'Y'
+--WHERE d.opioid_drug_flag = 'Y'
 GROUP BY specialty;
 -----------------------------------------------------------------------------------------------------------
 -- 3.	a. Which drug (generic_name) had the highest total drug cost?
