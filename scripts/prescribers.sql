@@ -102,7 +102,7 @@ LIMIT 1;
 -- b. Which drug (generic_name) has the hightest total cost per day?
 --Bonus: Round your cost per day column to 2 decimal places. 
 --Google ROUND to see how this works.
--- "C1 ESTERASE INHIBITOR"	3495.22	115546.00
+-- "C1 ESTERASE INHIBITOR"	3495.22	
 
 SELECT
 	d.generic_name,
@@ -152,61 +152,144 @@ ORDER BY MONEY DESC;
 -- for all states, not just Tennessee. Answer--33
 
 SELECT
-	COUNT(*)
+	COUNT(cbsa)
 FROM cbsa
 WHERE cbsaname ILIKE '%TN';
 -----------------------------------------------------------------------------------------------------------
 -- b. Which cbsa has the largest combined population? Which has the smallest? Report the
 -- CBSA name and total population.
---"Yuma, AZ"	"49740"	"largest_population"
---"Abilene, TX"	"10180"	"smallest_population"
+--""Nashville-Davidson--Murfreesboro--Franklin, TN"	1830410	"largest population"
+--"Morristown, TN"	116352	"smallest population"
 
-SELECT
-	c.cbsaname,
-	c.cbsa,
-	p.population
-	CASE 
-		WHEN c.cbsa = (SELECT MAX(cbsa) FROM c.cbsa) THEN 'largest_population'
-		WHEN c.cbsa = (SELECT MIN(cbsa) FROM c.cbsa) THEN 'smallest_population'
-		END AS combined_population
-FROM cbsa c
-LEFT JOIN population p
-USING (fipscounty)
-GROUP BY c.cbsaname, c.cbsa
-ORDER BY p.population
-LIMIT 2;
+WITH combined_population AS(
+	SELECT
+		c.cbsaname AS cbsa_name,
+		SUM(p.population) AS total_population
+		FROM population p
+		LEFT JOIN cbsa c
+		USING (fipscounty)
+		GROUP BY cbsa_name
+)
+
+SELECT 
+	cbsa_name,
+	total_population,
+	CASE
+		WHEN total_population = (SELECT MAX(total_population) FROM combined_population) 
+			THEN 'largest population'
+		WHEN total_population = (SELECT MIN(total_population) FROM combined_population) 
+			THEN 'smallest population'
+		ELSE 'other'
+		END AS cbsa_population 
+FROM combined_population
+ORDER BY total_population DESC
+;
 
 -----------------------------------------------------------------------------------------------------------
 -- c. What is the largest (in terms of population) county which is not included in a CBSA? 
---Report the county name and population. Answer - "SHELBY"	937847
+--Report the county name and population. Answer - "SEVIER"	95523
 
-SELECT 
-	f.county,
-	SUM(p.population)	
+SELECT -- to check all the county names in the different tables
+p.fipscounty,
+f.county,
+c.cbsaname,
+p.population
+FROM population p
+LEFT JOIN cbsa c 
+	USING (fipscounty)
+LEFT JOIN fips_county f 
+	USING (fipscounty)
+
+SELECT
+	f.fipscounty,
+	f.county AS county_name,
+	SUM(p.population) AS population
 FROM population p
 LEFT JOIN fips_county f
 USING(fipscounty)
-GROUP BY f.county, p.population
-ORDER BY p.population DESC;
-
+LEFT JOIN cbsa c
+USING(fipscounty)
+WHERE c.fipscounty IS NULL
+GROUP BY f.county, f.fipscounty
+ORDER BY population DESC;
 
 -----------------------------------------------------------------------------------------------------------
 -- 6.	a. Find all rows in the prescription table where total_claims is at least 3000.
 --Report the drug_name and the total_claim_count.
 
+SELECT 
+	drug_name,
+	total_claim_count
+FROM prescription
+WHERE total_claim_count >= '3000'
+ORDER BY total_claim_count;
+
 -----------------------------------------------------------------------------------------------------------
--- b. For each instance that you found in part a, add a column that indicates whether the drug is an opioid.
+-- b. For each instance that you found in part a, add a column that indicates
+--whether the drug is an opioid.
+
+SELECT 
+	p.drug_name,
+	p.total_claim_count,
+	CASE WHEN opioid_drug_flag = 'Y' THEN 'opioid'
+		ELSE 'not opioid'
+		END AS drug_type
+FROM prescription p 
+LEFT JOIN drug d
+USING (drug_name)
+WHERE total_claim_count >= '3000'
+ORDER BY total_claim_count;
 
 -----------------------------------------------------------------------------------------------------------
 -- c. Add another column to you answer from the previous part which gives the prescriber 
 -- first and last name associated with each row.
-
+SELECT 
+	p.drug_name,
+	p.total_claim_count,
+	CASE WHEN opioid_drug_flag = 'Y' THEN 'opioid'
+		ELSE 'not opioid'
+		END AS drug_type,
+	CONCAT(prescriber.nppes_provider_first_name,' ', prescriber.nppes_provider_last_org_name) AS provider_name
+FROM prescription p 
+LEFT JOIN drug d
+USING (drug_name)
+LEFT JOIN prescriber
+ON prescriber.npi = p.npi
+WHERE total_claim_count >= '3000'
+ORDER BY total_claim_count;
 -----------------------------------------------------------------------------------------------------------
+
 -- 7.	The goal of this exercise is to generate a full list of all pain management 
 -- specialists in Nashville and the number of claims they had for each opioid. 
 -- Hint: The results from all 3 parts will have 637 rows.
 
------------------------------------------------------------------------------------------------------------
+SELECT -- query to find out pain management specialty
+	DISTINCT specialty_description
+FROM prescriber
+WHERE specialty_description ILIKE '%pain%'
+AND nppes_provider_city ILIKE 'Nashville'
+
+
+SELECT 
+	CONCAT(p.nppes_provider_first_name,' ', p.nppes_provider_last_org_name) AS specialist,
+	--p.specialty_description AS specialty,
+	d.drug_name,
+	--p.nppes_provider_city AS city,
+	SUM(p1.total_claim_count) AS total_claim
+	--d.opioid_drug_flag AS opioid	
+FROM prescriber p
+LEFT JOIN prescription p1
+USING (npi)
+LEFT JOIN drug d
+ON d.drug_name = p1.drug_name
+WHERE p.specialty_description LIKE '%Pain%'
+AND p.nppes_provider_city ILIKE 'Nashville'
+AND d.opioid_drug_flag = 'Y'
+GROUP BY specialist,
+		 d.drug_name
+		 -- p.specialty_description, city, opioid;
+
+----------------------------------------------------------------------------------------------------------
 -- a. First, create a list of all npi/drug_name combinations for pain management 
 -- specialists --(specialty_description = 'Pain Management) in the city of Nashville 
 -- (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y').
