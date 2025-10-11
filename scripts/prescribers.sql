@@ -98,7 +98,8 @@ SELECT
 	p.specialty_description AS specialty,
 	SUM(CASE WHEN d.opioid_drug_flag = 'Y' THEN p1.total_claim_count
 	END) AS opioid_claim_count,
-	opioid_claim_count * 100/ SUM(p1.total_claim_count) AS percentage
+	SUM(p1.total_claim_count) AS sum_total_claim,
+	ROUND(opioid_claim_count * 100/ sum_total_claim) AS percentage
 FROM prescriber p
 LEFT JOIN prescription p1
 USING (npi)
