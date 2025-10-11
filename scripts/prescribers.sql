@@ -79,11 +79,29 @@ LIMIT 5;
 -- c. Challenge Question: Are there any specialties that appear in the prescriber table 
 --that have no associated prescriptions in the prescription table?
 
+SELECT
+	p.specialty_description AS specialty_count,
+	COUNT(npi),
+	p1.drug_name
+FROM prescriber p
+LEFT JOIN prescription p1
+USING (npi)
+WHERE p1.npi IS NULL
+GROUP BY p1.drug_name, p.specialty_description;
 -----------------------------------------------------------------------------------------------------------
 -- d. Difficult Bonus: Do not attempt until you have solved all other problems! 
 --For each specialty, report the percentage of total claims by that specialty which
 --are for opioids. Which specialties have a high percentage of opioids?
-
+SELECT
+	p.specialty_description AS specialty,
+	(SELECT (total_claim_count FROM prerscription WHERE d.opioid_drug_flag = 'Y' *100/  ),2) AS percentage
+	FROM prescriber p
+LEFT JOIN prescription p1
+USING (npi)
+LEFT JOIN drug d
+ON d.drug_name = p1.drug_name
+WHERE d.opioid_drug_flag = 'Y'
+GROUP BY specialty;
 -----------------------------------------------------------------------------------------------------------
 -- 3.	a. Which drug (generic_name) had the highest total drug cost?
 --"INSULIN GLARGINE,HUM.REC.ANLOG"	104264066.35
@@ -143,6 +161,8 @@ SELECT
 FROM drug d
 INNER JOIN prescription p
 USING (drug_name)
+WHERE d.opioid_drug_flag = 'Y'
+OR d.antibiotic_drug_flag = 'Y'
 GROUP BY drug_type,
 	d.opioid_drug_flag, 
 	d.antibiotic_drug_flag	
@@ -182,6 +202,7 @@ SELECT
 		ELSE 'other'
 		END AS cbsa_population 
 FROM combined_population
+--WHERE cbsa_population IN ('largest population', 'smallest population')
 ORDER BY total_population DESC
 ;
 
