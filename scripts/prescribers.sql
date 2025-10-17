@@ -2,20 +2,6 @@
 --Report the npi and the total number of claims.
 --1881634483	99707
 SELECT
-	p1.npi,
-	SUM(p2.total_claim_count) AS total_claim
-FROM prescriber AS p1
-LEFT JOIN prescription AS p2
-USING (npi)
-WHERE p2.drug_name IS NOT NULL
-	OR p2.total_claim_count IS NOT NULL
-GROUP BY p1.npi 
-ORDER BY total_claim DESC
-LIMIT 1;
-
---OR
-
-SELECT
 	npi,
 	SUM(total_claim_count) 
 FROM prescription
@@ -161,24 +147,25 @@ SELECT
 		 WHEN d.antibiotic_drug_flag = 'Y' THEN 'antibiotic'
 		 ELSE 'neither'
 		 END AS drug_type,
-	SUM(p.total_drug_cost) AS MONEY
+	SUM(p.total_drug_cost):: MONEY AS total_drug_cost
 FROM drug d
 INNER JOIN prescription p
 USING (drug_name)
 WHERE d.opioid_drug_flag = 'Y'
 OR d.antibiotic_drug_flag = 'Y'
-GROUP BY drug_type,
-	d.opioid_drug_flag, 
-	d.antibiotic_drug_flag	
-ORDER BY MONEY DESC;
+GROUP BY drug_type
+ORDER BY total_drug_cost DESC;
 -----------------------------------------------------------------------------------------------------------
 -- 5.	a. How many CBSAs are in Tennessee? Warning: The cbsa table contains information
 -- for all states, not just Tennessee. Answer--33
 
 SELECT
-	COUNT(cbsa)
-FROM cbsa
-WHERE cbsaname ILIKE '%TN';
+	c.cbsa, c.cbsaname, f.state
+FROM cbsa c
+LEFT JOIN fips_county f
+USING (fipscounty)
+--WHERE cbsaname ILIKE '%TN%'
+WHERE f.state = 'TN';
 -----------------------------------------------------------------------------------------------------------
 -- b. Which cbsa has the largest combined population? Which has the smallest? Report the
 -- CBSA name and total population.
@@ -209,7 +196,7 @@ FROM combined_population
 --WHERE cbsa_population IN ('largest population', 'smallest population')
 ORDER BY total_population DESC
 ;
-
+--use UNION and limit on top and bottom
 -----------------------------------------------------------------------------------------------------------
 -- c. What is the largest (in terms of population) county which is not included in a CBSA? 
 --Report the county name and population. Answer - "SEVIER"	95523
